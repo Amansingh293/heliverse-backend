@@ -28,8 +28,8 @@ const startServer = async () => {
       hooks: false,
       indexes: false,
     });
-    app.listen(3001, () => {
-      console.log("Server is running on port 3001");
+    app.listen(3002, () => {
+      console.log("Server is running on port 3002");
     });
   } catch (error) {
     console.error("Unable to connect to the database:", error);

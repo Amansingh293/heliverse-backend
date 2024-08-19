@@ -17,72 +17,72 @@ const { Classroom, Teacher, Student, User } = require("../models");
 
 const ClassroomSchedule = require("../models/ClassroomSchedule");
 
-router.get("/hello", teacherOnlyAuth, async (request, response) => {
-  response.json("hello");
-});
+router.post(
+  "/create-teacher-user",
+  principalOnlyAuth,
+  async (request, response) => {
+    console.log(request.body);
+    try {
+      const { name, email, password, role, classroom } = request.body;
 
-router.post("/create-teacher-user", async (request, response) => {
-  console.log(request.body);
-  try {
-    const { name, email, password, role, classroom } = request.body;
+      const validRoles = ["PRINCIPAL", "TEACHER", "STUDENT"];
 
-    const validRoles = ["PRINCIPAL", "TEACHER", "STUDENT"];
+      if (!validRoles.includes(role.toUpperCase())) {
+        return response.status(400).json({ error: "Invalid role" });
+      }
+      const user = await Users.findOne({ where: { email: email } });
 
-    if (!validRoles.includes(role.toUpperCase())) {
-      return response.status(400).json({ error: "Invalid role" });
-    }
-    const user = await Users.findOne({ where: { email: email } });
+      if (!user) {
+        const saltRounds = 10;
 
-    if (!user) {
-      const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
+        let newUser;
 
-      let newUser;
+        if (role.toUpperCase() === "Student".toUpperCase()) {
+          newUser = new Users({
+            name: name,
+            email: email,
+            password: hashedPassword,
+            role: request.body.role.toUpperCase(),
+            classroomId: classroom,
+          });
+        } else {
+          newUser = new Users({
+            name: name,
+            email: email,
+            password: hashedPassword,
+            role: role.toUpperCase(),
+          });
+        }
+        console.log(newUser);
+        newUser = await newUser.save();
 
-      if (role.toUpperCase() === "Student".toUpperCase()) {
-        newUser = new Users({
-          name: name,
-          email: email,
-          password: hashedPassword,
-          role: request.body.role.toUpperCase(),
-          classroomId: classroom,
+        response.status(200).send({
+          success: true,
+          message: "User Created ! Please Login",
+          data: {
+            email: email,
+            name: name,
+            role: role,
+            userId: newUser.id,
+          },
         });
       } else {
-        newUser = new Users({
-          name: name,
-          email: email,
-          password: hashedPassword,
-          role: request.body.role.toUpperCase(),
-        });
+        response
+          .status(403)
+          .send({ success: false, message: "User Already Exists" });
       }
-      console.log(newUser);
-      newUser = await newUser.save();
 
-      response.status(200).send({
-        success: true,
-        message: "User Created ! Please Login",
-        data: {
-          email: email,
-          name: name,
-          role: role,
-          userId: newUser.id,
-        },
-      });
-    } else {
+      return;
+    } catch (err) {
+      console.log(err.message);
       response
-        .status(403)
-        .send({ success: false, message: "User Already Exists" });
+        .status(500)
+        .send({ success: false, message: "Internal Server Error" });
     }
-
-    return;
-  } catch (err) {
-    console.log(err.message);
-    response
-      .status(500)
-      .send({ success: false, message: "Internal Server Error" });
   }
-});
+);
 
 router.post("/login", async (request, response) => {
   try {
